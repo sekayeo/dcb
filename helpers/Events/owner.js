@@ -18,7 +18,7 @@ export default async function on({ ev }) {
     const edit = (txt) => msg.edit?.(txt).catch(() => {})
 
     const fols = await getDirectoriesRecursive()
-    await reply("🔄 Updating...")
+    const loadingMsg = await msg.reply('🔄 Updating...').catch(() => null)
 
     let modified = ''
     let newfile = ''
@@ -92,10 +92,10 @@ console.log('New file:', newfile)
 console.log('Failed:', failed)
 console.log('Final result:', result)
     
-    if (typeof msg.edit === 'function') {
-      msg.edit(result).catch(err => console.error('[EDIT ERROR]', err))
-    } else {
-      msg.reply(result).catch(err => console.error('[REPLY ERROR]', err))
-  }
+    if (loadingMsg?.edit) {
+  loadingMsg.edit(result).catch(err => console.error('[EDIT ERROR]', err))
+} else {
+  msg.reply(result).catch(err => console.error('[REPLY ERROR]', err))
+    }
   })
 }
