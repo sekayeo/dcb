@@ -85,6 +85,17 @@ export default async function on({ ev }) {
 
     let result = `*[ 🛠️ UPDATE ]*\n\n*📂 File Changed:*${modified}${newfile}\n`
     if (failed.length > 12) result += failed
-    edit(result)
+    
+    console.log('=== UPDATE FINISHED ===')
+console.log('Modified:', modified)
+console.log('New file:', newfile)
+console.log('Failed:', failed)
+console.log('Final result:', result)
+    
+    if (typeof msg.edit === 'function') {
+      msg.edit(result).catch(err => console.error('[EDIT ERROR]', err))
+    } else {
+      msg.reply(result).catch(err => console.error('[REPLY ERROR]', err))
+  }
   })
 }
