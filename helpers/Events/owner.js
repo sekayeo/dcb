@@ -1,6 +1,5 @@
 import fs from 'fs'
 import path from 'path'
-import chalk from 'chalk'
 import fetch from 'node-fetch'
 import { URL } from 'url'
 import { getDirectoriesRecursive } from '../../toolkit/func.js'
@@ -10,60 +9,41 @@ export default async function on({ ev }) {
     cmd: ['update'],
     tag: 'owner',
     isOwner: true,
-    urls: {
-      formats: ['https://raw.githubusercontent.com/sekayeo/dcb/refs/heads/'],
-      msg: true
-    }
-  }, async ({ msg, args, urls: metaUrls }) => {
-    const urls = args
-      .split(/\s+/)
-      .filter(str => str.startsWith('http'))
-
-    if (!urls || !Array.isArray(urls) || !urls.length) {
-      return await msg.reply("❌ URL tidak valid. Kirim link file dari GitHub/CDN untuk update.")
-    }
-
-    const whitelistPrefixes = metaUrls?.formats || []
+    urls: { msg: true }
+  }, async ({ msg, args }) => {
+    const urls = args.split(/\s+/).filter(str => str.startsWith('http'))
+    if (!urls.length) return msg.reply("❌ URL kosong. Kirim link file GitHub/CDN.")
 
     const reply = (txt) => msg.reply(txt).catch(() => {})
     const edit = (txt) => msg.edit?.(txt).catch(() => {})
 
-    let failed = '\n*❗ Failed:*'
-    let fols = await getDirectoriesRecursive()
+    const fols = await getDirectoriesRecursive()
+    await reply("🔄 Updating...")
 
-    // Cek dan filter URL valid dulu sebelum proses update
-    let urlPath = urls.map(link => {
+    let modified = ''
+    let newfile = ''
+    let failed = '\n*❗ Failed:*'
+
+    const urlPath = urls.map(link => {
       try {
         const { pathname, host } = new URL(link)
-        const isValidPrefix = whitelistPrefixes.some(prefix => link.startsWith(prefix))
-        if (!isValidPrefix) {
-          failed += `\n- ${link}\n> URL tidak sesuai format`
+        let parts = pathname.split('/')
+        let idx = parts.indexOf('heads')
+        if (idx === -1 || idx + 1 >= parts.length) {
+          failed += `\n- ${link}\n> Tidak ditemukan path setelah 'heads/'`
           return null
         }
 
-        let f = pathname.split('heads/')[1]
-        if (!f) {
-          failed += `\n- ${link}\n> Tidak bisa ambil path file`
-          return null
-        }
-
-        f = f.split('/')?.slice(1)?.join('/')?.split('/')
-        const filename = f.slice(-1)[0]
-        if (!filename) {
-          failed += `\n- ${link}\n> File kosong`
-          return null
-        }
-
-        const _path = f.slice(0, -1).join('/')
+        const pathParts = parts.slice(idx + 2)
+        const filename = pathParts.at(-1)
+        const _path = pathParts.slice(0, -1).join('/')
 
         for (const folder of fols) {
-          const folderPath = folder.split('./')[1].slice(0, -1)
-
+          const folderPath = folder.replace('./', '').replace(/\/$/, '')
           if (folderPath.includes(_path) && _path) {
             return [link, `${folder}${filename}`]
           }
-
-          if (['index.js', 'package'].some(a => filename.includes(a))) {
+          if (['index.js', 'package'].some(f => filename.includes(f))) {
             return [link, `./${filename}`]
           }
         }
@@ -76,18 +56,9 @@ export default async function on({ ev }) {
       }
     }).filter(Boolean)
 
-    // ❌ Kalau tidak ada file valid, langsung balikin pesan gagal
-    if (urlPath.length === 0) {
-      let text = `❌ *Update gagal!* URL yang di berikan tidak valid.\n${failed}`
-      return await msg.reply(text)
+    if (!urlPath.length) {
+      return msg.reply(`❌ *Update dibatalkan!* Semua URL tidak valid.\n${failed}`)
     }
-
-    // ✅ Kalau valid, lanjut update
-    await reply('🔄 Updating...')
-
-    let changed = '*📂 File Changed:*'
-    let modified = ''
-    let newfile = ''
 
     for (let [url, fpath] of urlPath) {
       try {
@@ -96,8 +67,9 @@ export default async function on({ ev }) {
           failed += `\n- ${url}\n> Gagal fetch file`
           continue
         }
-        const isExists = fs.existsSync(fpath)
+
         const buff = await res.text()
+        const isExists = fs.existsSync(fpath)
 
         if (isExists) {
           modified += `\n- \`modified\`: ${fpath}`
@@ -111,8 +83,8 @@ export default async function on({ ev }) {
       }
     }
 
-    let text = `*[ 🛠️ UPDATE ]*\n\n${changed}${modified}${newfile}\n`
-    if (failed.length > 12) text += failed
-    edit(text)
+    let result = `*[ 🛠️ UPDATE ]*\n\n*📂 File Changed:*${modified}${newfile}\n`
+    if (failed.length > 12) result += failed
+    edit(result)
   })
 }
