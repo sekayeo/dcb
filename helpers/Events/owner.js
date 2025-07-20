@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import chalk from 'chalk'
 import fetch from 'node-fetch'
 import { URL } from 'url'
 import { getDirectoriesRecursive } from '../../toolkit/func.js'
@@ -86,11 +87,7 @@ export default async function on({ ev }) {
     let result = `*[ 🛠️ UPDATE ]*\n\n*📂 File Changed:*${modified}${newfile}\n`
     if (failed.length > 12) result += failed
     
-    console.log('=== UPDATE FINISHED ===')
-console.log('Modified:', modified)
-console.log('New file:', newfile)
-console.log('Failed:', failed)
-console.log('Final result:', result)
+    console.log(chalk.green(`=== UPDATE FINISHED ===\nModified: ${modified}\nNew file: ${newfile}\nFailed: ${failed}\nFinal result: ${result}`))
     
     if (loadingMsg?.edit) {
   loadingMsg.edit(result).catch(err => console.error('[EDIT ERROR]', err))
