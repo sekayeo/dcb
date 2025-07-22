@@ -13,9 +13,9 @@ export default async function on({ ev }) {
     urls: { msg: true }
   }, async ({ msg, args }) => {
     const urls = args.split(/\s+/).filter(str => str.startsWith('http'))
-    if (!urls.length) return msg.reply("❌ URL kosong. Kirim link file GitHub/CDN.")
+    if (!urls.length) return msg.noReply("❌ URL kosong. Kirim link file GitHub/CDN.")
 
-    const reply = (txt) => msg.reply(txt).catch(() => {})
+    const reply = (txt) => msg.noReply(txt).catch(() => {})
     const edit = (txt) => msg.edit?.(txt).catch(() => {})
 
     const fols = await getDirectoriesRecursive()
@@ -59,7 +59,7 @@ export default async function on({ ev }) {
     }).filter(Boolean)
 
     if (!urlPath.length) {
-      return msg.reply(`❌ *Update dibatalkan!* Semua URL tidak valid.\n${failed}`)
+      return msg.noReply(`❌ *Update dibatalkan!* Semua URL tidak valid.\n${failed}`)
     }
 
     for (let [url, fpath] of urlPath) {
@@ -116,7 +116,7 @@ export default async function on({ ev }) {
     if (loadingMsg?.edit) {
       loadingMsg.edit(result).catch(err => console.error('[EDIT ERROR]', err))
     } else {
-      msg.reply(result).catch(err => console.error('[REPLY ERROR]', err))
+      msg.noReply(result).catch(err => console.error('[REPLY ERROR]', err))
     }
   })
 }
