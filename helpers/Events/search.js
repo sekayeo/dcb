@@ -1,4 +1,3 @@
-// ./helpers/Events/search.js
 import fetch from 'node-fetch'
 import { downloadSpotify } from '../../machine/spotifydl.js'
 
