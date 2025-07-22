@@ -2,7 +2,7 @@ import fs from 'fs'
 import path from 'path'
 import chalk from 'chalk'
 import fetch from 'node-fetch'
-import { URL } from 'url'
+import { pathToFileURL } from 'url'
 import { getDirectoriesRecursive } from '../../toolkit/func.js'
 
 export default async function on({ ev }) {
@@ -19,17 +19,18 @@ export default async function on({ ev }) {
     const edit = (txt) => msg.edit?.(txt).catch(() => {})
 
     const fols = await getDirectoriesRecursive()
-    const loadingMsg = await msg.reply('🔄 Updating...').catch(() => null)
+    const loadingMsg = await reply('🔄 Updating...')
 
     let modified = ''
     let newfile = ''
     let failed = '\n*❗ Failed:*'
+    const reloaded = []
 
     const urlPath = urls.map(link => {
       try {
-        const { pathname, host } = new URL(link)
-        let parts = pathname.split('/')
-        let idx = parts.indexOf('heads')
+        const { pathname } = new URL(link)
+        const parts = pathname.split('/')
+        const idx = parts.indexOf('heads')
         if (idx === -1 || idx + 1 >= parts.length) {
           failed += `\n- ${link}\n> Tidak ditemukan path setelah 'heads/'`
           return null
@@ -71,6 +72,7 @@ export default async function on({ ev }) {
 
         const buff = await res.text()
         const isExists = fs.existsSync(fpath)
+        await fs.writeFileSync(fpath, buff)
 
         if (isExists) {
           modified += `\n- \`modified\`: ${fpath}`
@@ -78,21 +80,43 @@ export default async function on({ ev }) {
           newfile += `\n- \`new\`: ${fpath}`
         }
 
-        await fs.writeFileSync(fpath, buff)
+        if (fpath.endsWith('.js')) {
+          const fileUrl = pathToFileURL(path.resolve(fpath)).href
+
+          // Hapus semua command dari file ini
+          ev.events = ev.events.filter(e => e.__source !== fpath)
+
+          try {
+            const imported = await import(`${fileUrl}?update=${Date.now()}`)
+            if (typeof imported.default === 'function') {
+              const on = (meta, callback) => {
+                if (!meta?.cmd || !Array.isArray(meta.cmd)) throw new Error("Command must be array")
+                ev.events.push({ ...meta, callback, __source: fpath })
+              }
+
+              await imported.default({ ev: { ...ev, on }, is: ev.is })
+              reloaded.push(`- \`reloaded\`: ${fpath}`)
+            }
+          } catch (e) {
+            failed += `\n- ${url}\n> Gagal reload: ${e.message}`
+          }
+        }
       } catch (e) {
         failed += `\n- ${url}\n> ${e.message}`
       }
     }
 
     let result = `*[ 🛠️ UPDATE ]*\n\n*📂 File Changed:*${modified}${newfile}\n`
-    if (failed.length > 12) result += failed
-    
-    console.log(chalk.green(`=== UPDATE FINISHED ===\nModified: ${modified}\nNew file: ${newfile}\nFailed: ${failed}\nFinal result: ${result}`))
-    
+    if (reloaded.length) result += `\n*🔁 Reloaded:*\n${reloaded.join('\n')}`
+    if (failed.length > 12) result += `\n${failed}`
+
+    console.log(chalk.green(`=== UPDATE FINISHED ===`))
+    console.log(modified, newfile, reloaded, failed)
+
     if (loadingMsg?.edit) {
-  loadingMsg.edit(result).catch(err => console.error('[EDIT ERROR]', err))
-} else {
-  msg.reply(result).catch(err => console.error('[REPLY ERROR]', err))
+      loadingMsg.edit(result).catch(err => console.error('[EDIT ERROR]', err))
+    } else {
+      msg.reply(result).catch(err => console.error('[REPLY ERROR]', err))
     }
   })
 }
