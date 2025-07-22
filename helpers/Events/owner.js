@@ -13,7 +13,7 @@ export default async function on({ ev }) {
     urls: { msg: true }
   }, async ({ msg, args }) => {
     const urls = args.split(/\s+/).filter(str => str.startsWith('http'))
-    if (!urls.length) return msg.noReply("❌ URL kosong. Kirim link file GitHub/CDN.")
+    if (!urls.length) return msg.noReply("❌ Mohon sertakan link file GitHub/CDN.")
 
     const reply = (txt) => msg.noReply(txt).catch(() => {})
     const edit = (txt) => msg.edit?.(txt).catch(() => {})
