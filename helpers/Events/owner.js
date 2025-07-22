@@ -13,11 +13,10 @@ export default async function on({ ev }) {
     urls: { msg: true }
   }, async ({ msg, args }) => {
     const urls = args.split(/\s+/).filter(str => str.startsWith('http'))
-    if (!urls.length) return msg.noReply("❌ Mohon sertakan link file GitHub/CDN.")
+    if (!urls.length) return msg.noReply("❌ URL kosong. Kirim link file GitHub/CDN.")
 
     const reply = (txt) => msg.noReply(txt).catch(() => {})
     const edit = (txt) => msg.edit?.(txt).catch(() => {})
-
     const fols = await getDirectoriesRecursive()
     const loadingMsg = await reply('🔄 Updating...')
 
@@ -83,9 +82,10 @@ export default async function on({ ev }) {
         if (fpath.endsWith('.js')) {
           const fileUrl = pathToFileURL(path.resolve(fpath)).href
 
-          // Hapus semua command dari file ini
+          // Hapus semua command lama dari file ini
           ev.events = ev.events.filter(e => e.__source !== fpath)
 
+          // Import ulang file dan inject ulang command-nya
           try {
             const imported = await import(`${fileUrl}?update=${Date.now()}`)
             if (typeof imported.default === 'function') {
